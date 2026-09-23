@@ -27,7 +27,7 @@ class TaskRead(BaseModel):
 class TaskEventRead(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
-    id: int
+    id: uuid.UUID
     event_type: TaskEventType
     created_at: datetime
     metadata: dict | None = Field(default=None, validation_alias="metadata_")

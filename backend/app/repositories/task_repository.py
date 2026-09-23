@@ -1,34 +1,76 @@
-"""Data access for tasks and task events. No business rules here."""
-import uuid
+from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Task, TaskEvent
-from app.domain.task import TaskEventType, TaskStatus
+from app.db.models import TaskModel
+from app.domain.task import TaskStatus
 
 
 class TaskRepository:
-    def __init__(self, session: AsyncSession):
-        self.session = session
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
 
-    async def add(self, task: Task) -> Task:
-        raise NotImplementedError
+    async def create(
+        self,
+        *,
+        title: str,
+        description: str | None,
+    ) -> TaskModel:
+        task = TaskModel(
+            title=title,
+            description=description,
+            status=TaskStatus.PENDING,
+        )
 
-    async def get(self, task_id: uuid.UUID, *, with_events: bool = False) -> Task | None:
-        raise NotImplementedError
+        self._session.add(task)
+        await self._session.flush()
+
+        return task
+
+    async def get_by_id(
+        self,
+        task_id: UUID,
+    ) -> TaskModel | None:
+        result = await self._session.execute(
+            select(TaskModel).where(TaskModel.id == task_id)
+        )
+
+        return result.scalar_one_or_none()
 
     async def list(
-        self, *, status: TaskStatus | None, search: str | None, limit: int, offset: int
-    ) -> tuple[list[Task], int]:
-        raise NotImplementedError
+        self,
+        *,
+        status: TaskStatus | None = None,
+    ) -> list[TaskModel]:
+        query = select(TaskModel).order_by(
+            TaskModel.created_at.desc()
+        )
 
-    async def delete(self, task: Task) -> None:
-        raise NotImplementedError
+        if status is not None:
+            query = query.where(TaskModel.status == status)
 
-    async def add_event(
-        self, task_id: uuid.UUID, event_type: TaskEventType, metadata: dict | None = None
-    ) -> TaskEvent:
-        raise NotImplementedError
+        result = await self._session.execute(query)
 
-    async def count_by_status(self) -> dict[TaskStatus, int]:
-        raise NotImplementedError
+        return list(result.scalars().all())
+
+    async def update_status(
+        self,
+        task: TaskModel,
+        status: TaskStatus,
+    ) -> TaskModel:
+        task.status = status
+
+        await self._session.flush()
+
+        return task
+
+    async def increment_retry_count(
+        self,
+        task: TaskModel,
+    ) -> TaskModel:
+        task.retry_count += 1
+
+        await self._session.flush()
+
+        return task

@@ -19,7 +19,7 @@ backend/
     repositories/task_repository.py  Data access only
     db/                         models.py (ORM), session.py, redis.py (queue)
     workers/task_worker.py      Consumes Redis queue, calls TaskService.process
-  alembic/                      DB migrations
+  migrations/                   Alembic migrations (alembic.ini points here)
   tests/
 frontend/
   src/
