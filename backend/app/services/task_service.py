@@ -1,15 +1,18 @@
 from uuid import UUID
 
-from app.domain.repositories import TaskRepository
-from app.domain.task import Task, TaskStatus
+from app.domain.unit_of_work import UnitOfWork
+from app.domain.task import Task, TaskStatus, TaskEventType
 
 
 class TaskService:
+    """
+    Service class for managing tasks and their events.
+    """
     def __init__(
         self,
-        repository: TaskRepository,
+        uow: UnitOfWork,
     ) -> None:
-        self._repository = repository
+        self._uow = uow
 
     async def create_task(
         self,
@@ -17,16 +20,25 @@ class TaskService:
         title: str,
         description: str | None = None,
     ) -> Task:
-        return await self._repository.create(
+        task = await self._uow.tasks.create(
             title=title,
             description=description,
         )
+
+        await self._uow.events.create(
+            task_id=task.id,
+            event_type=TaskEventType.CREATED,
+        )
+
+        await self._uow.commit()
+
+        return task
 
     async def get_task(
         self,
         task_id: UUID,
     ) -> Task | None:
-        return await self._repository.get_by_id(task_id)
+        return await self._uow.tasks.get_by_id(task_id)
 
     async def list_tasks(
         self,
@@ -34,21 +46,28 @@ class TaskService:
         status: TaskStatus | None = None,
     ) -> list[Task]:
         return list(
-            await self._repository.list(status=status)
+            await self._uow.tasks.list(status=status)
         )
 
     async def start_processing(
-        self,
-        task_id: UUID,
+            self,
+            task_id: UUID,
     ) -> Task | None:
-        task = await self._repository.get_by_id(task_id)
+        task = await self._uow.tasks.get_by_id(task_id)
 
         if task is None:
             return None
 
         task.start_processing()
 
-        await self._repository.update(task)
+        await self._uow.tasks.update(task)
+
+        await self._uow.events.create(
+            task_id=task.id,
+            event_type=TaskEventType.PROCESSING_STARTED,
+        )
+
+        await self._uow.commit()
 
         return task
 
@@ -56,14 +75,21 @@ class TaskService:
         self,
         task_id: UUID,
     ) -> Task | None:
-        task = await self._repository.get_by_id(task_id)
+        task = await self._uow.tasks.get_by_id(task_id)
 
         if task is None:
             return None
 
         task.complete()
 
-        await self._repository.update(task)
+        await self._uow.tasks.update(task)
+
+        await self._uow.events.create(
+            task_id=task.id,
+            event_type=TaskEventType.COMPLETED,
+        )
+
+        await self._uow.commit()
 
         return task
 
@@ -72,14 +98,22 @@ class TaskService:
         task_id: UUID,
         error_message: str,
     ) -> Task | None:
-        task = await self._repository.get_by_id(task_id)
+        task = await self._uow.tasks.get_by_id(task_id)
 
         if task is None:
             return None
 
         task.fail(error_message)
 
-        await self._repository.update(task)
+        await self._uow.tasks.update(task)
+
+        await self._uow.events.create(
+            task_id=task.id,
+            event_type=TaskEventType.FAILED,
+            metadata={"error_message": error_message},
+        )
+
+        await self._uow.commit()
 
         return task
 
@@ -87,14 +121,22 @@ class TaskService:
         self,
         task_id: UUID,
     ) -> Task | None:
-        task = await self._repository.get_by_id(task_id)
+        task = await self._uow.tasks.get_by_id(task_id)
 
         if task is None:
             return None
 
         task.retry()
 
-        await self._repository.update(task)
+        await self._uow.tasks.update(task)
+
+        await self._uow.events.create(
+            task_id=task.id,
+            event_type=TaskEventType.RETRYING,
+            metadata={"retry_count": task.retry_count},
+        )
+
+        await self._uow.commit()
 
         return task
 

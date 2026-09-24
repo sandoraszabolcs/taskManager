@@ -22,7 +22,7 @@ class SqlAlchemyTaskEventRepository:
             id=uuid4(),
             task_id=task_id,
             event_type=event_type,
-            metadata=metadata,
+            metadata_=metadata,
         )
 
         self._session.add(model)
@@ -53,7 +53,7 @@ class SqlAlchemyTaskEventRepository:
             id=model.id,
             task_id=model.task_id,
             event_type=model.event_type,
-            metadata=model.metadata,
+            metadata=model.metadata_,
             created_at=model.created_at,
         )
 
