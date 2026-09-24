@@ -67,3 +67,12 @@ class Task:
         self.retry_count += 1
         self.status = TaskStatus.PENDING
         self.error_message = None
+
+
+@dataclass
+class TaskEvent:
+    id: UUID
+    task_id: UUID
+    event_type: TaskEventType
+    metadata: dict[str, object] | None
+    created_at: datetime
