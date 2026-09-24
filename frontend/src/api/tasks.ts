@@ -1,12 +1,12 @@
 import { request } from "./client";
-import type { Metrics, Task, TaskCreate, TaskDetail, TaskFilters, TaskList } from "../types/task";
+import type { Metrics, Task, TaskCreate, TaskDetail, TaskFilters } from "../types/task";
 
 export const tasksApi = {
   list: (filters: TaskFilters = {}) => {
     const params = new URLSearchParams(
       Object.entries(filters).filter(([, v]) => v) as [string, string][],
     );
-    return request<TaskList>(`/tasks?${params}`);
+    return request<Task[]>(`/tasks?${params}`);
   },
   get: (id: string) => request<TaskDetail>(`/tasks/${id}`),
   create: (data: TaskCreate) =>

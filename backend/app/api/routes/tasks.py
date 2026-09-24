@@ -11,7 +11,6 @@ from app.services.task_service import TaskService
 from app.api.dependencies import get_task_service
 
 router = APIRouter(
-    prefix="/tasks",
     tags=["tasks"],
 )
 
