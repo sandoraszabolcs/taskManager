@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import health
 from app.api.routes import tasks
+from app.core.config import settings
 
 API_PREFIX = "/api"
 
@@ -11,7 +12,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Task Manager")
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:5173"],
+        allow_origins=settings.cors_origin_list,
         allow_methods=["*"],
         allow_headers=["*"],
     )
