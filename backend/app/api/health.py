@@ -1,4 +1,8 @@
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
+
+from app.db.session import engine
 
 router = APIRouter()
 
@@ -12,5 +16,10 @@ async def health():
 @router.get("/ready")
 async def ready():
     """Readiness: Postgres and Redis are reachable."""
-    # TODO: SELECT 1 on Postgres, PING on Redis; return 503 if either fails
-    raise NotImplementedError
+    # TODO: PING on Redis once the queue is wired up
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception:
+        return JSONResponse(status_code=503, content={"status": "unavailable", "postgres": "down"})
+    return {"status": "ok", "postgres": "up"}

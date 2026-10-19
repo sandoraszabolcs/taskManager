@@ -5,6 +5,13 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
     database_url: str
     debug: bool = False
+    # Comma-separated so it fits in one env var, e.g.
+    # CORS_ORIGINS=https://app.example.com,http://localhost:5173
+    cors_origins: str = "http://localhost:5173"
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
 
 settings = Settings()
