@@ -1,0 +1,19 @@
+# Cloud Build recipe for the production frontend image.
+# `gcloud builds submit --tag` can't pass --target or --build-arg, so we spell the
+# docker build out here. Values starting with _ are filled in from --substitutions.
+#
+#   gcloud builds submit frontend --config=frontend/cloudbuild.yaml `
+#     --substitutions="_VITE_API_URL=https://api-xxx.run.app,_IMAGE=REGION-docker.pkg.dev/PROJECT/taskmanager/frontend:v1"
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --target=prod
+      - --build-arg=VITE_API_URL=${_VITE_API_URL}
+      - --tag=${_IMAGE}
+      - .
+
+# Push the image to Artifact Registry once the build succeeds.
+images:
+  - ${_IMAGE}

@@ -50,3 +50,47 @@ Host ports differ from container ports, because this machine already runs a loca
 | Redis    | `localhost:6380`   | `redis:6379`           |
 
 DB credentials: user `tasks`, password `tasks`, database `tasks` (see `.env`).
+
+## Deploying to Google Cloud
+
+Runs on Cloud Run (project `taskmanagrger`, region `europe-west1`). The worker and Redis are not deployed yet.
+
+| Piece | GCP resource |
+|---|---|
+| API | Cloud Run service `api`, runs as service account `taskmanager-api` |
+| Frontend | Cloud Run service `frontend` (nginx, `prod` target of `frontend/Dockerfile`) |
+| Migrations | Cloud Run job `migrate` (`alembic upgrade head`, same image as the API) |
+| Database | Cloud SQL `taskmanager-db` (Postgres 16), database and user `tasks` |
+| `DATABASE_URL` | Secret Manager secret `database-url` (connects via `/cloudsql/...` socket) |
+| Images | Artifact Registry repo `taskmanager`, built by Cloud Build |
+
+### Deploy
+
+```powershell
+.\deploy.ps1                  # build, migrate, deploy api + frontend
+.\deploy.ps1 -SkipFrontend    # backend only
+.\deploy.ps1 -SkipApi         # frontend only
+```
+
+Images are tagged with the git commit. Migrations run before the API is deployed, so keep them
+backwards compatible. `VITE_API_URL` is baked in at build time (`frontend/cloudbuild.yaml`);
+`CORS_ORIGINS` on the `api` service must equal the frontend URL.
+
+### Day to day
+
+```powershell
+gcloud run services logs read api --region=europe-west1 --limit=50      # logs
+gcloud run services update-traffic api --region=europe-west1 --to-revisions=REVISION=100   # rollback
+gcloud sql instances patch taskmanager-db --activation-policy=NEVER     # stop DB (saves cost)
+gcloud sql instances patch taskmanager-db --activation-policy=ALWAYS    # start DB
+```
+
+### Connecting from PyCharm / psql
+
+```powershell
+gcloud auth application-default login     # once
+cloud-sql-proxy taskmanagrger:europe-west1:taskmanager-db --port 5435
+```
+
+Then connect to `localhost:5435`, database `tasks`, user `tasks`. Password:
+`gcloud secrets versions access latest --secret=database-url` (the part between `tasks:` and `@`).
